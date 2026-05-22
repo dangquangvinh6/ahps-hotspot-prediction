@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHPS - Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="logo">
+            <span class="pulse-dot"></span> AHPS <span>CORE</span>
+        </div>
+        <div class="status-bar">System Online | Real-time ML Inference</div>
+    </nav>
+
+    <main class="dashboard">
+        <section class="panel map-panel">
+            <div class="panel-header">GEO-SPATIAL TRACKING</div>
+            <div id="map"></div>
+        </section>
+
+        <section class="panel data-panel">
+            <div class="panel-header">EXTRACTED FEATURES</div>
+            
+            <div id="loading-overlay" class="hidden">
+                <div class="spinner"></div>
+                <p>Analyzing Coordinates...</p>
+            </div>
+
+            <div class="location-card">
+                <div class="loc-item">
+                    <span class="loc-label">LAT / LNG</span>
+                    <span class="loc-value mono" id="ui-coords">--.----, --.----</span>
+                </div>
+                <div class="loc-item">
+                    <span class="loc-label">STATE</span>
+                    <span class="loc-value" id="ui-state">Awaiting Input</span>
+                </div>
+                <div class="loc-item">
+                    <span class="loc-label">COUNTY</span>
+                    <span class="loc-value" id="ui-county">Awaiting Input</span>
+                </div>
+            </div>
+
+            <div class="table-wrapper custom-scrollbar">
+                <table id="feature-table">
+                    <thead><tr><th>Feature</th><th>Value</th></tr></thead>
+                    <tbody id="feature-body">
+                        <tr><td colspan="2" class="empty-state">Click on the map to initiate scan</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel result-panel">
+            <div class="panel-header">PREDICTION ENGINE (XGBOOST)</div>
+            
+            <div class="risk-card" id="risk-card">
+                <div class="risk-title">ALERT LEVEL</div>
+                <div class="risk-value" id="ui-alert">STANDBY</div>
+                
+                <div class="prob-container">
+                    <div class="prob-label">
+                        <span>Accident Probability</span>
+                        <span class="mono" id="ui-prob">0.00%</span>
+                    </div>
+                    <div class="prob-bar-bg">
+                        <div class="prob-bar-fill" id="ui-prob-bar" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

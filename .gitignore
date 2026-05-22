@@ -1,0 +1,27 @@
+# Data & Database
+data/
+*.db
+*.sqlite3
+
+# Security
+.env
+*.pem
+
+# Python Virtual Env
+venv/
+env/
+.venv/
+
+# Cache & Build
+__pycache__/
+cache/
+*.py[cod]
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Heavy Models (>100MB)
+models/model_random_forest.pkl
+models/model_logistic_*.pkl
+models/model_lightgbm.pkl

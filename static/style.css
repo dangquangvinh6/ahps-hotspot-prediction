@@ -1,0 +1,125 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #0b0f19;
+    color: #94a3b8;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Navbar */
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background: #111827;
+    border-bottom: 1px solid #1f2937;
+}
+.logo {
+    font-size: 1.2rem; font-weight: 800; color: #f8fafc; letter-spacing: 2px;
+    display: flex; align-items: center; gap: 10px;
+}
+.logo span:not(.pulse-dot) { color: #38bdf8; }
+.pulse-dot {
+    width: 10px; height: 10px; background: #22c55e; border-radius: 50%;
+    box-shadow: 0 0 10px #22c55e; animation: pulse 2s infinite;
+}
+.status-bar { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;}
+
+/* Grid Layout */
+.dashboard {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.2fr;
+    gap: 20px;
+    padding: 20px;
+    height: calc(100vh - 60px);
+}
+
+.panel {
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.panel-header {
+    background: #1f2937; padding: 10px 15px; font-size: 0.8rem;
+    font-weight: 800; color: #cbd5e1; letter-spacing: 1.5px;
+}
+
+/* Map */
+#map { flex-grow: 1; z-index: 1; }
+
+/* Data Panel */
+.data-panel { padding-bottom: 15px; }
+.location-card {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    padding: 15px; border-bottom: 1px solid #1f2937; background: #0f172a;
+}
+.loc-item:first-child { grid-column: span 2; }
+.loc-label { display: block; font-size: 0.7rem; color: #64748b; margin-bottom: 3px; }
+.loc-value { font-size: 0.95rem; font-weight: 600; color: #f8fafc; }
+
+/* Table */
+.table-wrapper { flex-grow: 1; overflow-y: auto; padding: 0 15px; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { padding: 8px 5px; text-align: left; border-bottom: 1px solid #1e293b; font-size: 0.85rem;}
+th { color: #64748b; text-transform: uppercase; font-weight: 600; }
+td:last-child { color: #38bdf8; font-family: 'JetBrains Mono', monospace; text-align: right; }
+.empty-state { text-align: center; padding: 40px 0 !important; color: #475569; }
+
+/* Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+/* Risk Card */
+.risk-card {
+    margin: 20px; padding: 30px 20px; border-radius: 12px;
+    text-align: center; border: 2px solid #334155;
+    background: #0f172a; transition: all 0.4s ease;
+}
+.risk-title { font-size: 0.8rem; color: #94a3b8; font-weight: 800; letter-spacing: 2px; }
+.risk-value { font-size: 2.5rem; font-weight: 800; margin: 15px 0; color: #f8fafc; letter-spacing: 1px; }
+
+/* Progress Bar */
+.prob-container { text-align: left; margin-top: 25px; }
+.prob-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; color: #cbd5e1; }
+.prob-bar-bg { height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; }
+.prob-bar-fill { height: 100%; width: 0%; background: #38bdf8; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Trạng thái AI */
+.status-safe { border-color: #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.1); }
+.status-safe .risk-value { color: #22c55e; }
+.status-safe .prob-bar-fill { background: #22c55e; }
+
+.status-caution { border-color: #eab308; box-shadow: 0 0 20px rgba(234, 179, 8, 0.15); }
+.status-caution .risk-value { color: #eab308; }
+.status-caution .prob-bar-fill { background: #eab308; }
+
+.status-high { border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.25); animation: borderPulse 1.5s infinite; }
+.status-high .risk-value { color: #ef4444; }
+.status-high .prob-bar-fill { background: #ef4444; }
+
+/* Loading */
+.hidden { display: none !important; }
+#loading-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(17, 24, 39, 0.9); z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.spinner { width: 30px; height: 30px; border: 3px solid #1e293b; border-top-color: #38bdf8; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { opacity: 0.5; box-shadow: 0 0 2px #22c55e; } }
+@keyframes borderPulse { 50% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.1); } }
