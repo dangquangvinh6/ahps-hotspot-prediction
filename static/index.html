@@ -1,81 +1,382 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AHPS - Command Center</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>AHPS | Hệ thống Đánh giá Rủi ro An toàn Không gian</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/static/style.css">
+
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(20, 27, 45, 0.85);
+            --neon-blue: #00e5ff;
+            --neon-green: #00ff88;
+            --neon-warning: #ffaa00;
+            --neon-danger: #ff0055;
+        }
+
+        body { 
+            background-color: var(--bg-color); 
+            background-image: radial-gradient(circle at top right, rgba(0, 229, 255, 0.05), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(255, 0, 85, 0.05), transparent 40%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* Giữ lại bản đồ màu nhưng giảm độ sáng nhẹ để hợp nền tối */
+        #map { 
+            height: 550px; 
+            border-radius: 10px; 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            filter: brightness(0.95) contrast(1.05);
+            cursor: crosshair;
+        }
+
+        .card-header {
+            background: rgba(0,0,0,0.25);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-size: 0.95rem;
+            color: #e2e8f0;
+        }
+
+        /* Danh sách Dữ liệu - Căn chỉnh hoàn hảo */
+        .data-row {
+            padding: 10px 15px;
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: #94a3b8; font-weight: 500; }
+        .data-value { color: #f8fafc; font-weight: 600; text-align: right; }
+
+        /* Cảnh báo Mức độ rủi ro */
+        .alert-box { border-radius: 12px; padding: 30px 20px; text-align: center; border: 1px solid transparent; }
+        .alert-safe { background: rgba(0, 255, 136, 0.08); border-color: rgba(0, 255, 136, 0.3); color: var(--neon-green); box-shadow: inset 0 0 20px rgba(0,255,136,0.05); }
+        .alert-caution { background: rgba(255, 170, 0, 0.08); border-color: rgba(255, 170, 0, 0.3); color: var(--neon-warning); box-shadow: inset 0 0 20px rgba(255,170,0,0.05); }
+        .alert-high-risk { background: rgba(255, 0, 85, 0.08); border-color: rgba(255, 0, 85, 0.3); color: var(--neon-danger); box-shadow: inset 0 0 20px rgba(255,0,85,0.05); }
+
+        /* Thanh Tiến trình Phát sáng & Chuyển động */
+        .progress-glow {
+            height: 10px;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 50px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .progress-bar-animated {
+            background-image: linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent);
+            background-size: 1rem 1rem;
+            animation: progress-stripes 1s linear infinite;
+        }
+        @keyframes progress-stripes { from { background-position: 1rem 0; } to { background-position: 0 0; } }
+
+        /* Nút bấm */
+        .btn-action { transition: all 0.3s; letter-spacing: 0.5px; border-radius: 8px; }
+        .btn-extract { background: rgba(0, 229, 255, 0.1); border: 1px solid var(--neon-blue); color: var(--neon-blue); }
+        .btn-extract:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px rgba(0,229,255,0.5); }
+        .btn-predict { background: var(--neon-warning); border: none; color: #000; font-weight: bold; animation: pulse 2s infinite; }
+        .btn-predict:hover { background: #ffc107; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,170,0,0.4); }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 170, 0, 0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 170, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 170, 0, 0); }
+        }
+
+        .slide-up-row { animation: slideUpFade 0.3s ease forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
+
+        #loadingOverlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.85); z-index: 1000; align-items: center; justify-content: center;
+            border-radius: 10px; backdrop-filter: blur(4px);
+        }
+    </style>
 </head>
 <body>
-    <nav class="top-nav">
-        <div class="logo">
-            <span class="pulse-dot"></span> AHPS <span>CORE</span>
+
+    <nav class="navbar navbar-dark mb-4 py-3 border-bottom border-secondary" style="background: rgba(0,0,0,0.4);">
+        <div class="container">
+            <a class="navbar-brand text-uppercase fw-bold tracking-wide" href="#">
+                <i class="fa-solid fa-shield-halved text-info me-2"></i>AHPS | Giám sát An toàn Không gian
+            </a>
+            <div class="text-secondary small"><i class="fa-solid fa-circle text-success me-2" style="font-size: 0.5rem; animation: pulse 2s infinite;"></i>Hệ thống Đang trực tuyến</div>
         </div>
-        <div class="status-bar">System Online | Real-time ML Inference</div>
     </nav>
 
-    <main class="dashboard">
-        <section class="panel map-panel">
-            <div class="panel-header">GEO-SPATIAL TRACKING</div>
-            <div id="map"></div>
-        </section>
-
-        <section class="panel data-panel">
-            <div class="panel-header">EXTRACTED FEATURES</div>
-            
-            <div id="loading-overlay" class="hidden">
-                <div class="spinner"></div>
-                <p>Analyzing Coordinates...</p>
-            </div>
-
-            <div class="location-card">
-                <div class="loc-item">
-                    <span class="loc-label">LAT / LNG</span>
-                    <span class="loc-value mono" id="ui-coords">--.----, --.----</span>
-                </div>
-                <div class="loc-item">
-                    <span class="loc-label">STATE</span>
-                    <span class="loc-value" id="ui-state">Awaiting Input</span>
-                </div>
-                <div class="loc-item">
-                    <span class="loc-label">COUNTY</span>
-                    <span class="loc-value" id="ui-county">Awaiting Input</span>
+    <div class="container pb-5">
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="glass-card h-100 position-relative">
+                    <div class="card-header d-flex justify-content-between align-items-center py-3">
+                        <span><i class="fa-solid fa-map-location-dot me-2 text-info"></i>Bản đồ Định vị</span>
+                        <span class="badge border border-secondary text-secondary" id="coordDisplay">Chưa chọn vị trí</span>
+                    </div>
+                    <div class="card-body p-3 position-relative">
+                        <div id="map"></div>
+                        
+                        <div id="loadingOverlay" class="flex-column">
+                            <div class="spinner-border text-info" role="status" style="width: 3rem; height: 3rem;"></div>
+                            <h6 class="mt-4 fw-light text-info" id="loadingText" style="letter-spacing: 1px;">Đang quét dữ liệu khu vực...</h6>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0 pb-3 text-end">
+                        <button id="btnAction" class="btn btn-action btn-extract px-4 py-2" disabled>
+                            <i class="fa-solid fa-satellite-dish me-2"></i>QUÉT DỮ LIỆU HIỆN TRƯỜNG
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div class="table-wrapper custom-scrollbar">
-                <table id="feature-table">
-                    <thead><tr><th>Feature</th><th>Value</th></tr></thead>
-                    <tbody id="feature-body">
-                        <tr><td colspan="2" class="empty-state">Click on the map to initiate scan</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <section class="panel result-panel">
-            <div class="panel-header">PREDICTION ENGINE (XGBOOST)</div>
-            
-            <div class="risk-card" id="risk-card">
-                <div class="risk-title">ALERT LEVEL</div>
-                <div class="risk-value" id="ui-alert">STANDBY</div>
+            <div class="col-lg-5 d-flex flex-column gap-4">
                 
-                <div class="prob-container">
-                    <div class="prob-label">
-                        <span>Accident Probability</span>
-                        <span class="mono" id="ui-prob">0.00%</span>
+                <div class="glass-card flex-grow-1">
+                    <div class="card-header py-3">
+                        <i class="fa-solid fa-list-check me-2 text-success"></i>Thông tin Ghi nhận tại Vị trí
                     </div>
-                    <div class="prob-bar-bg">
-                        <div class="prob-bar-fill" id="ui-prob-bar" style="width: 0%;"></div>
+                    <div class="card-body p-0">
+                        <div style="max-height: 350px; overflow-y: auto;" class="p-2" id="featureContainer">
+                            <div class="text-center text-secondary py-5 mt-4">
+                                <i class="fa-solid fa-crosshairs mb-3" style="font-size: 2.5rem; opacity: 0.3;"></i><br>
+                                <span class="fw-light">Vui lòng chọn 1 điểm trên bản đồ và nhấn Quét dữ liệu.</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <div class="glass-card">
+                    <div class="card-header py-3">
+                        <i class="fa-solid fa-chart-pie me-2 text-warning"></i>Báo cáo Mức độ An toàn
+                    </div>
+                    <div class="card-body p-4" id="resultPanel">
+                        <div class="alert-box border border-secondary text-secondary" style="padding: 20px;">
+                            <h5 class="mb-0 fw-light" style="font-size: 1rem;">Đang chờ Hệ thống đánh giá...</h5>
+                        </div>
+                    </div>
+                </div>
+                
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/static/app.js"></script>
+    <script>
+        // Từ điển đã loại bỏ từ ngữ chuyên ngành AI
+        const FEATURE_NAMES = {
+            "Location_State": "Tiểu bang", "Location_County": "Quận/Hạt",
+            "Temperature(F)": "Nhiệt độ Hiện tại (°F)", "Humidity(%)": "Độ ẩm Không khí (%)",
+            "Pressure(in)": "Áp suất Khí quyển (inHg)", "Visibility(mi)": "Tầm nhìn Xa (miles)",
+            "Wind_Speed(mph)": "Tốc độ Gió (mph)", "is_raining": "Khu vực Có mưa",
+            "rain_intensity": "Cường độ Mưa (Cấp)", "is_rush_hour": "Đang Giờ cao điểm",
+            "is_night": "Trời tối / Thiếu sáng", "Traffic_Signal": "Đèn Tín hiệu Giao thông",
+            "Junction": "Nút giao thông lớn", "Crossing": "Vạch Băng qua đường",
+            "Stop": "Biển báo Dừng (Stop)", "Give_Way": "Biển Nhường đường",
+            "Amenity": "Khu Tiện ích Đông người", "No_Exit": "Khu vực Đường cụt",
+            "Railway": "Đường sắt đi ngang", "Station": "Trạm dừng / Nhà ga",
+            "hour": "Khung giờ Hệ thống", "day_of_week": "Thứ trong tuần", "month": "Tháng"
+        };
+        const HIDDEN_FEATURES = ["Weather_enc", "WindDir_enc", "State_enc", "County_enc"];
+
+        // KHỞI TẠO BẢN ĐỒ (Sử dụng Bản đồ màu OSM truyền thống)
+        const map = L.map('map').setView([34.0522, -118.2437], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        let currentStep = 0;
+        let selectedCoords = null;
+        let cachedFeatures = null;
+        let currentMarker = null;
+
+        const btnAction = document.getElementById('btnAction');
+        const coordDisplay = document.getElementById('coordDisplay');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+
+        map.on('click', function(e) {
+            selectedCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
+            
+            if (currentMarker) map.removeLayer(currentMarker);
+            currentMarker = L.marker([selectedCoords.lat, selectedCoords.lng]).addTo(map);
+            
+            coordDisplay.innerHTML = `<i class="fa-solid fa-location-dot text-danger me-1"></i> ${selectedCoords.lat.toFixed(4)}, ${selectedCoords.lng.toFixed(4)}`;
+            coordDisplay.className = "badge bg-dark border border-secondary text-light";
+            
+            // Reset quy trình
+            currentStep = 0;
+            cachedFeatures = null;
+            btnAction.disabled = false;
+            btnAction.className = "btn btn-action btn-extract px-4 py-2 fw-bold text-uppercase";
+            btnAction.innerHTML = '<i class="fa-solid fa-satellite-dish me-2"></i>QUÉT DỮ LIỆU HIỆN TRƯỜNG';
+            
+            document.getElementById('featureContainer').innerHTML = '<div class="text-center text-secondary py-5 mt-4"><i class="fa-solid fa-check-circle mb-3" style="font-size: 2.5rem; opacity: 0.3;"></i><br><span class="fw-light">Đã nhận tọa độ. Sẵn sàng quét dữ liệu.</span></div>';
+            document.getElementById('resultPanel').innerHTML = '<div class="alert-box border border-secondary text-secondary" style="padding: 20px;"><h5 class="mb-0 fw-light" style="font-size: 1rem;">Đang chờ Hệ thống đánh giá...</h5></div>';
+        });
+
+        btnAction.addEventListener('click', async () => {
+            if (!selectedCoords) return;
+
+            if (currentStep === 0) {
+                loadingText.innerText = "Đang trích xuất dữ liệu Thời tiết & Hạ tầng...";
+                loadingOverlay.style.display = 'flex';
+                btnAction.disabled = true;
+
+                try {
+                    const res = await fetch('/extract_features', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(selectedCoords)
+                    });
+                    if (!res.ok) throw new Error("Mất kết nối với Cảm biến (API).");
+                    
+                    cachedFeatures = await res.json();
+                    renderFeatureTable(cachedFeatures);
+
+                    currentStep = 1;
+                    btnAction.disabled = false;
+                    btnAction.className = "btn btn-action btn-predict px-5 py-2 fw-bold text-uppercase shadow-lg";
+                    btnAction.innerHTML = '<i class="fa-solid fa-magnifying-glass-chart me-2"></i>TIẾN HÀNH ĐÁNH GIÁ RỦI RO';
+
+                } catch (error) {
+                    alert("LỖI: " + error.message);
+                    btnAction.disabled = false;
+                } finally {
+                    loadingOverlay.style.display = 'none';
+                }
+            } 
+            else if (currentStep === 1) {
+                loadingText.innerText = "Đang tính toán Xác suất qua Mô hình...";
+                loadingOverlay.style.display = 'flex';
+                btnAction.disabled = true;
+
+                try {
+                    const res = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ features: cachedFeatures })
+                    });
+                    if (!res.ok) throw new Error("Lỗi máy chủ Phân tích.");
+                    
+                    const prediction = await res.json();
+                    renderResult(prediction);
+
+                    currentStep = 2;
+                    btnAction.className = "btn btn-dark border border-secondary px-4 py-2 fw-bold text-uppercase opacity-75";
+                    btnAction.innerHTML = '<i class="fa-solid fa-check-double me-2"></i>ĐÃ HOÀN TẤT PHÂN TÍCH';
+
+                } catch (error) {
+                    alert("LỖI: " + error.message);
+                    btnAction.disabled = false;
+                } finally {
+                    loadingOverlay.style.display = 'none';
+                }
+            }
+        });
+
+        // Hàm render giao diện thông số thẳng hàng (Dùng Flexbox)
+        function renderFeatureTable(features) {
+            const container = document.getElementById('featureContainer');
+            container.innerHTML = ''; 
+
+            let delay = 0;
+            for (const [key, value] of Object.entries(features)) {
+                if (HIDDEN_FEATURES.includes(key)) continue; 
+
+                let displayKey = FEATURE_NAMES[key] || key; 
+                let displayVal = value;
+
+                if (value === 0 && !["Temperature(F)", "rain_intensity", "hour", "month", "day_of_week"].includes(key)) {
+                    displayVal = '<span class="badge border border-secondary text-secondary fw-normal">Không có</span>';
+                }
+                if (value === 1 && !["hour", "month", "day_of_week", "rain_intensity"].includes(key)) {
+                    displayVal = '<span class="badge bg-success text-dark fw-bold">Có</span>';
+                }
+
+                container.innerHTML += `
+                    <div class="data-row slide-up-row" style="animation-delay: ${delay}s">
+                        <div class="data-label"><i class="fa-solid fa-angle-right text-info me-2" style="font-size: 0.7em;"></i>${displayKey}</div>
+                        <div class="data-value">${displayVal}</div>
+                    </div>
+                `;
+                delay += 0.03; 
+            }
+        }
+
+        // Hàm render Kết quả với Hiệu ứng Đếm số (Number Counter Animation)
+        function renderResult(data) {
+            const panel = document.getElementById('resultPanel');
+            let alertClass, icon, text, colorVar;
+
+            if (data.alert_level === "HIGH RISK") {
+                alertClass = "alert-high-risk"; icon = "fa-radiation fa-spin-pulse"; text = "CẢNH BÁO NGUY HIỂM"; colorVar = "var(--neon-danger)";
+            } else if (data.alert_level === "CAUTION") {
+                alertClass = "alert-caution"; icon = "fa-triangle-exclamation fa-fade"; text = "CẦN CHÚ Ý QUAN SÁT"; colorVar = "var(--neon-warning)";
+            } else {
+                alertClass = "alert-safe"; icon = "fa-shield-check"; text = "MỨC ĐỘ AN TOÀN"; colorVar = "var(--neon-green)";
+            }
+
+            // Chuyển chuỗi "75.00%" thành số float 75.00 để làm hiệu ứng
+            const targetProb = parseFloat(data.probability.replace('%', ''));
+
+            panel.innerHTML = `
+                <div class="alert-box ${alertClass} slide-up-row">
+                    <div style="font-size: 3rem; margin-bottom: 15px;"><i class="fa-solid ${icon}"></i></div>
+                    <h4 class="fw-bold mb-4 text-uppercase" style="letter-spacing: 1.5px;">${text}</h4>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-uppercase" style="font-size: 0.85rem; letter-spacing: 1px;">Xác suất Sự cố:</span>
+                        <strong style="font-size: 1.2rem; color: ${colorVar}; font-family: monospace;" id="probCounter">0.00%</strong>
+                    </div>
+                    
+                    <div class="progress-glow">
+                        <div class="progress-bar-animated h-100" id="probBar" style="width: 0%; background-color: ${colorVar}; transition: width 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);"></div>
+                    </div>
+                </div>
+            `;
+
+            // Kịch bản Hiệu ứng Nhảy số (0 -> Target)
+            const counterElement = document.getElementById('probCounter');
+            const barElement = document.getElementById('probBar');
+            
+            // Kích hoạt thanh tiến trình dài ra
+            setTimeout(() => { barElement.style.width = data.probability; }, 100);
+
+            // Kích hoạt nhảy số
+            let currentNum = 0;
+            const duration = 1500; // 1.5 giây
+            const steps = 60;
+            const increment = targetProb / steps;
+            const stepTime = duration / steps;
+
+            const timer = setInterval(() => {
+                currentNum += increment;
+                if (currentNum >= targetProb) {
+                    currentNum = targetProb;
+                    clearInterval(timer);
+                }
+                counterElement.innerText = currentNum.toFixed(2) + "%";
+            }, stepTime);
+        }
+    </script>
 </body>
 </html>

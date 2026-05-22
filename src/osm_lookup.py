@@ -11,23 +11,21 @@ INFRA_FEATURES = [
 
 DEFAULT_INFRA = {k: 0 for k in INFRA_FEATURES}
 
-# OSM tags that map to the 9 model features
-_QUERY_TAGS = {
-    'highway'        : ['traffic_signals', 'crossing', 'stop', 'give_way', 'motorway_junction'],
-    'junction'       : True,
-    'railway'        : True,
-    'amenity'        : True,
-    'public_transport': ['station'],
-    'noexit'         : ['yes'],
-}
-
-# Tỉ lệ vàng: Tối ưu Cache và bám sát thực tế sai số GPS
-_BIN_SIZE   = 0.001   # ~111m — cache hiệu quả, bảo vệ server API
-_QUERY_DIST = 75      # ~75m — đủ rộng cho sai số GPS, không ôm nhầm ngã tư khác
-
+# Kích thước lưới ~111m x ~111m
+_BIN_SIZE   = 0.001  
+# Bán kính 100m để bao phủ toàn bộ sai số GPS và ngã tư lớn
+_QUERY_DIST = 100      
 
 def _to_bin(lat: float, lng: float) -> tuple:
-    return round(lat / _BIN_SIZE), round(lng / _BIN_SIZE)
+    """Trả về chỉ mục lưới (bin) và TỌA ĐỘ TÂM của ô lưới đó."""
+    lat_bin = round(lat / _BIN_SIZE)
+    lng_bin = round(lng / _BIN_SIZE)
+    
+    # Tính toán tọa độ tâm xác định của ô lưới
+    lat_center = lat_bin * _BIN_SIZE
+    lng_center = lng_bin * _BIN_SIZE
+    
+    return lat_bin, lng_bin, lat_center, lng_center
 
 
 def _init_db(db_path: str) -> sqlite3.Connection:
@@ -71,13 +69,13 @@ def get_infra_features(lat: float, lng: float,
                        db_path: str = 'models/infra_lookup.db') -> dict:
     """Return the 9 binary infra features for a GPS coordinate."""
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    lat_bin, lng_bin = _to_bin(lat, lng)
+    lat_bin, lng_bin, lat_center, lng_center = _to_bin(lat, lng)
 
     conn = _init_db(db_path)
     cached = _read_cache(conn, lat_bin, lng_bin)
     if cached is not None:
         conn.close()
-        print(f"  Infra (cache): {cached}")
+        print(f"  [CACHE] Lấy từ bộ nhớ đệm: {cached}")
         return cached
 
     feats = DEFAULT_INFRA.copy()
@@ -86,18 +84,31 @@ def get_infra_features(lat: float, lng: float,
         try:
             overpass_url = "https://overpass-api.de/api/interpreter"
             overpass_query = f"""
-            [out:json];
+            [out:json][timeout:15];
             (
-              node(around:{_QUERY_DIST},{lat},{lng});
-              way(around:{_QUERY_DIST},{lat},{lng});
+              node(around:{_QUERY_DIST},{lat_center},{lng_center});
+              way(around:{_QUERY_DIST},{lat_center},{lng_center});
             );
             out tags;
             """
-            response = requests.post(overpass_url, data={'data': overpass_query}, timeout=10)
+            
+            # [BẢN VÁ BẢO MẬT] Bổ sung định danh rõ ràng để vượt qua tường lửa của OSM
+            headers = {
+                "User-Agent": "AHPS-Hotspot-Prediction-UIT-Project/1.0 (contact: 24522007@ms.uit.edu.vn)",
+                "Accept": "application/json"
+            }
+            
+            response = requests.post(
+                overpass_url, 
+                data={'data': overpass_query}, 
+                headers=headers, # Truyền định danh vào yêu cầu
+                timeout=15
+            )
             response.raise_for_status()
 
             elements = response.json().get('elements', [])
             feats = {k: 0 for k in INFRA_FEATURES}
+            
             for el in elements:
                 tags = el.get('tags', {})
                 hw = tags.get('highway', '').lower()
@@ -106,6 +117,7 @@ def get_infra_features(lat: float, lng: float,
                 am = tags.get('amenity', '').lower()
                 pt = tags.get('public_transport', '').lower()
                 ne = tags.get('noexit', '').lower()
+                
                 if 'traffic_signals' in hw: feats['Traffic_Signal'] = 1
                 if 'crossing'        in hw: feats['Crossing']       = 1
                 if 'stop'            in hw: feats['Stop']           = 1
@@ -125,10 +137,10 @@ def get_infra_features(lat: float, lng: float,
         except Exception as e:
             if attempt < 2:
                 sleep_time = 2 ** attempt
-                print(f"  [LỖI] Thử lại lần {attempt + 2} sau {sleep_time}s... ({e})")
+                print(f"  [LỖI] Overpass API: Thử lại lần {attempt + 2} sau {sleep_time}s... ({e})")
                 time.sleep(sleep_time)
             else:
-                print(f"  [THẤT BẠI] 3 lần không thành công, dùng default.")
+                print(f"  [THẤT BẠI] Overpass API ngưng phản hồi, dùng giá trị mặc định.")
 
     conn.close()
     return feats
