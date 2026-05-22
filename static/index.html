@@ -305,6 +305,11 @@
                 let displayKey = FEATURE_NAMES[key] || key; 
                 let displayVal = value;
 
+                if (key === "day_of_week") {
+                    const days = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"];
+                    displayVal = days[value];
+                }
+
                 if (value === 0 && !["Temperature(F)", "rain_intensity", "hour", "month", "day_of_week"].includes(key)) {
                     displayVal = '<span class="badge border border-secondary text-secondary fw-normal">Không có</span>';
                 }
