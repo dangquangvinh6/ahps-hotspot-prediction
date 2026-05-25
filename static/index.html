@@ -327,22 +327,35 @@
             }
         }
 
-        // Hàm render Kết quả với Hiệu ứng Đếm số (Number Counter Animation)
+        // Hàm render Kết quả đã được vá lỗi 100%
         function renderResult(data) {
             const panel = document.getElementById('resultPanel');
             let alertClass, icon, text, colorVar;
 
-            if (data.alert_level === "HIGH RISK") {
+            // 1. Đọc biến an toàn (Hỗ trợ cả code cũ lẫn code mới)
+            const currentAlert = data.alert_level || data.prediction;
+
+            if (currentAlert === "HIGH RISK" || currentAlert === 1) {
                 alertClass = "alert-high-risk"; icon = "fa-radiation fa-spin-pulse"; text = "CẢNH BÁO NGUY HIỂM"; colorVar = "var(--neon-danger)";
-            } else if (data.alert_level === "CAUTION") {
+            } else if (currentAlert === "CAUTION") {
                 alertClass = "alert-caution"; icon = "fa-triangle-exclamation fa-fade"; text = "CẦN CHÚ Ý QUAN SÁT"; colorVar = "var(--neon-warning)";
             } else {
                 alertClass = "alert-safe"; icon = "fa-shield-check"; text = "MỨC ĐỘ AN TOÀN"; colorVar = "var(--neon-green)";
             }
 
-            // Chuyển chuỗi "75.00%" thành số float 75.00 để làm hiệu ứng
-            const targetProb = parseFloat(data.probability.replace('%', ''));
+            // 2. Chống lỗi sập Web khi probability là số (0.65) thay vì chuỗi ("65%")
+            let targetProb = 0;
+            let probString = "0.00%";
+            
+            if (typeof data.probability === 'string') {
+                targetProb = parseFloat(data.probability.replace('%', ''));
+                probString = data.probability;
+            } else {
+                targetProb = data.probability * 100;
+                probString = targetProb.toFixed(2) + "%";
+            }
 
+            // Render giao diện
             panel.innerHTML = `
                 <div class="alert-box ${alertClass} slide-up-row">
                     <div style="font-size: 3rem; margin-bottom: 15px;"><i class="fa-solid ${icon}"></i></div>
@@ -359,16 +372,14 @@
                 </div>
             `;
 
-            // Kịch bản Hiệu ứng Nhảy số (0 -> Target)
+            // Kịch bản Hiệu ứng Nhảy số
             const counterElement = document.getElementById('probCounter');
             const barElement = document.getElementById('probBar');
             
-            // Kích hoạt thanh tiến trình dài ra
-            setTimeout(() => { barElement.style.width = data.probability; }, 100);
+            setTimeout(() => { barElement.style.width = probString; }, 100);
 
-            // Kích hoạt nhảy số
             let currentNum = 0;
-            const duration = 1500; // 1.5 giây
+            const duration = 1500; 
             const steps = 60;
             const increment = targetProb / steps;
             const stepTime = duration / steps;
